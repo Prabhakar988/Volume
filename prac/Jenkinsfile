@@ -1,0 +1,63 @@
+pipeline{
+
+  agent any
+  parameters{
+      choice(name: 'action', choices: 'create\ndestroy', description: 'actions on cluster')
+      string(name: 'Region', defaultValue: 'us-east', description:'aws region')
+      string(name: 'cluster', defaultValue: 'k8', description 'projectname')
+    }
+  environment{
+
+    access_key: credentials('AWS_Access_Key')
+    secret_id: credentials('AWS_SECRET_KEY')
+
+  }
+  stages{
+
+        stage('git checkout'){
+          
+         git checkout 
+
+          }
+        stage('connect to eks cluster'){
+
+         steps{
+          sh """
+             aws configure set aws_access_key_id "$access_key"
+             aws configure set aws_secret_access_key "$secret_id"
+             aws configure set aws_region "${params.Region}"
+             aws eks --region ${params.Region} update-kubeconfig --name ${params.cluster}
+
+              """;
+
+                 }
+             
+              }
+
+        stage('deploy to EKS'){
+           when { expression ${params.action = 'create'}}
+           steps{
+             
+            script{
+              def apply =false
+              try{
+                input message: 'do want to create', ok: 'click to proceed'
+                apply = true
+                }catch(err){
+                apply = false
+                currentBuild.result = 'UNSTABLE'
+                }
+              if(apply){
+                sh 
+                  """
+                  kubectl apply -f .
+
+                  """;
+              }  
+               
+            }
+          }
+         }      
+        }  
+
+    }

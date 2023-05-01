@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+ name: PVC-pod
+
+spec:
+  volumes:
+   - name: pv-storage
+     persistentVolumeClaim:
+       claimName: gold
+  containers:
+    - name: pvc-storage-pod
+      image: inginx
+      ports:
+        - containerPort: 80
+      volumeMount:
+       - mountPath: "usr/mtn/inginx.html" 
+         name: pv-storage      

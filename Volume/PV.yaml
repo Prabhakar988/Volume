@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+   name: PV-volume
+   env: prod
+spec:
+  storageClassName: gold
+  capacity:
+    storage: 10Gi
+  accessModes:
+   - ReadWriteOnce
+  hostPath:
+    - path: "/mtn/data/Index.html"
+  

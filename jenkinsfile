@@ -1,0 +1,61 @@
+node{
+    
+    stage('git checkout'){
+        
+       git 'https://github.com/Prabhakar988/k8.git' 
+        
+       } 
+       
+    stage('ssh to ansible'){
+        sshagent(['k8']) {
+        sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.39.89'
+        sh 'scp /var/jenkins_home/workspace/k8/* ubuntu@172.31.39.89:/home'
+           }
+         
+        }
+    stage('image build'){
+       sshagent(['k8']) {
+        sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.39.89 cd /home/ubuntu/'
+        sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.39.89 docker image build -t $JOB_NAME:v1.$BUILD_ID .'
+        
+           }    
+    
+      }
+    stage('image tag'){
+         sshagent(['k8']) {
+        sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.39.89 cd /home/ubuntu/'
+        sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.39.89 docker image tag  $JOB_NAME:v1.$BUILD_ID prabhakardevops/$JOB_NAME:v1.$BUILD_ID '
+        sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.39.89 docker image tag  $JOB_NAME:v1.$BUILD_ID prabhakardevops/$JOB_NAME:LATEST '
+           }
+    }
+    stage('image push'){
+        
+        sshagent(['k8']) {
+            withCredentials([string(credentialsId: 'docker_pwd', variable: 'docker_pwd')]) {
+             sh "ssh -o StrictHostKeyChecking=no ubuntu@172.31.39.89 docker login -u prabhakardevops -p ${docker_pwd}"
+             sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.39.89 docker image push prabhakardevops/$JOB_NAME:v1.$BUILD_ID '
+             sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.39.89 docker image push prabhakardevops/$JOB_NAME:LATEST '
+    
+                   }
+        
+               }
+          }
+        stage('transfer file to k8'){
+             sshagent(['web']) {
+             sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.41.43 '
+             sh 'scp /var/jenkins_home/workspace/k8/* ubuntu@172.31.41.43:/home/ubuntu/'
+             
+                }
+             }
+        stage('deployment using ansible'){
+            sshagent(['k8']) {
+            sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.39.89:/home/ubuntu/'
+            sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.39.89 ansible -m ping node'
+            sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.39.89:ansible-playbook ansible.yml'
+            
+          }
+            
+        }     
+             
+    }         
+     
